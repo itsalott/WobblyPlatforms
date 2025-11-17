@@ -1,16 +1,20 @@
+using System;
 using UnityEngine;
 
-public class PlayerController : MonoBehaviour
-{
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
+public class PlayerController : MonoBehaviour {
+    [SerializeField] private float _speed = 0.01f;
+    
+    private Vector2 Direction { get; set; }
+
+    private void Start() {
+        InputManager.Instance.GetMap<PlayerMap>().directionChanged += DirectionChanged;
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+    private void DirectionChanged(Vector2 direction) {
+        Direction = direction;
+    }
+
+    private void Update() {
+        transform.position += (Vector3)Direction * _speed;
     }
 }

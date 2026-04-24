@@ -3,14 +3,19 @@ Shader "Custom/Lotts/Wobbles/SquishyGeo"
     Properties
     {
         [Position] _DisplacePos("Displace Pos", Vector) = (1,2,3)
+        _Scale("Scale", Vector) = (1,1,1)
         [Radius] _Radius("Radius", Float) = 0.1
+        [Toggle] _Inverse("Inverse", Float) = 0
         [MainColor] _BaseColor("Base Color", Color) = (1, 1, 1, 1)
         [MainTexture] _BaseMap("Base Map", 2D) = "white"
     }
 
     SubShader
     {
-        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" }
+        Tags { "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" }
+        Blend SrcAlpha OneMinusSrcAlpha
+        ZWrite Off
+        Cull Off
 
         Pass
         {
@@ -22,7 +27,9 @@ Shader "Custom/Lotts/Wobbles/SquishyGeo"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             uniform float _Radius;
+            uniform float _Inverse;
             uniform float4 _DisplacePos; 
+            uniform float4 _Scale; 
 
             struct vertIn
             {
@@ -65,10 +72,26 @@ Shader "Custom/Lotts/Wobbles/SquishyGeo"
             {
                 g2f o;
                 for (int i = 0; i < 3; i ++) {
-                    //in range
-                    float3 w = TransformObjectToWorld(input[i].vertex.xyz);
-                    if (distance(w, _DisplacePos) < _Radius) {
-                        input[i].vertex.y = TransformWorldToObject(_DisplacePos).y;
+                    float3 wPos = TransformObjectToWorld(input[i].vertex.xyz);
+                    float3 diff = wPos.xyz - _DisplacePos;
+
+                    // clamped distance decimal, 0-1 based on radius
+                    // inverse is a boolean, if it is 1, it inverses the effect, otherwise it is 0
+                    float distDec = 1.0 - clamp(length(diff), 0, _Radius) / _Radius;
+                    
+                    if (abs(distDec) > 0.001f) {
+                        float3 offset = normalize(diff) * distDec;
+                        offset *= _Scale;
+                        
+                        if (_Inverse > 0.5) {
+                            // Inverse toggle is true
+                            wPos.xyz += offset.xyz;
+                        } else {
+                            // Inverse toggle is false
+                            wPos.xyz -= offset.xyz;
+                        }
+                        
+                        input[i].vertex.xyz = TransformWorldToObject(wPos.xyz);
                     }
                     
                     o.vertex = TransformObjectToHClip(input[i].vertex);
